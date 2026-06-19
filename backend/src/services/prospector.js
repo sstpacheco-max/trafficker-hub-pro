@@ -92,7 +92,11 @@ const SINONIMOS = {
   banco: [['amenity', 'bank']], notaria: [['office', 'notary']], contador: [['office', 'accountant']], contaduria: [['office', 'accountant']],
   seguros: [['office', 'insurance']], 'agencia de viajes': [['shop', 'travel_agency']], viajes: [['shop', 'travel_agency']],
   fisioterapia: [['amenity', 'clinic']], psicologo: [['healthcare', 'psychotherapist']], laboratorio: [['healthcare', 'laboratory']],
-  estetica: [['shop', 'beauty']], 'centro de estetica': [['shop', 'beauty']], belleza: [['shop', 'beauty']], manicure: [['shop', 'beauty']],
+  estetica: [['shop', 'beauty']], 'centro de estetica': [['shop', 'beauty']], manicure: [['shop', 'beauty']],
+  belleza: [['shop', 'beauty'], ['shop', 'cosmetics'], ['shop', 'chemist']],
+  cosmeticos: [['shop', 'cosmetics'], ['shop', 'chemist'], ['shop', 'beauty']],
+  cosmetica: [['shop', 'cosmetics'], ['shop', 'beauty']],
+  maquillaje: [['shop', 'cosmetics']], perfumeria: [['shop', 'perfumery']], perfume: [['shop', 'perfumery']],
   tatuajes: [['shop', 'tattoo']], 'gimnasio': [['leisure', 'fitness_centre']], yoga: [['leisure', 'fitness_centre']],
   panaderia: [['shop', 'bakery']], reposteria: [['shop', 'pastry']], pasteleria: [['shop', 'pastry']]
 };
@@ -217,24 +221,53 @@ async function buscarEnOSM({ categoria, bbox, limite }) {
   return procesarElementos(data.elements, cat.nombre, limite);
 }
 
-// Búsqueda por TEXTO LIBRE: combina sinónimos conocidos + coincidencia por nombre
+// Palabras de relleno que se ignoran al extraer el rubro de una frase
+const STOPWORDS = new Set([
+  'de', 'del', 'la', 'el', 'los', 'las', 'y', 'o', 'para', 'con', 'en', 'un', 'una', 'al', 'a',
+  'productos', 'producto', 'servicio', 'servicios', 'venta', 'ventas', 'tienda', 'almacen',
+  'almacén', 'centro', 'casa', 'local', 'negocio', 'negocios', 'empresa', 'distribuidora',
+  'comercializadora', 'punto', 'mi', 'su', 'tu'
+]);
+// Claves de sinónimo demasiado genéricas: solo se usan en coincidencia EXACTA,
+// no cuando aparecen dentro de una frase (evita ruido como "tienda" → minimercado).
+const GENERIC_KEYS = new Set(['tienda', 'salon', 'centro', 'casa', 'autos', 'flores', 'zapatos', 'muebles', 'mascotas', 'viajes', 'bar', 'perfume', 'cafe']);
+
+const limiteRegex = (palabra) =>
+  new RegExp(`(^|[^a-záéíóúñ])${palabra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-záéíóúñ]|$)`, 'i');
+
+// Búsqueda por TEXTO LIBRE: extrae el rubro de la frase, combina sinónimos
+// conocidos (incluso dentro de frases largas) + coincidencia por nombre.
 async function buscarLibreEnOSM({ texto, bbox, limite }) {
   const area = `(${bbox.sur},${bbox.oeste},${bbox.norte},${bbox.este})`;
   const clave = normalizar(texto);
   const bloques = [];
+  const setTags = new Set();
 
-  // 1) Si el texto coincide con un sinónimo conocido, usa sus etiquetas exactas
-  const tags = SINONIMOS[clave];
-  const setTags = new Set((tags || []).map(([k, v]) => `${k}=${v}`));
-  if (tags) {
+  const agregarTags = (tags) => {
     for (const [k, v] of tags) {
+      if (setTags.has(`${k}=${v}`)) continue;
+      setTags.add(`${k}=${v}`);
       bloques.push(`node["${k}"="${v}"]${area};`, `way["${k}"="${v}"]${area};`);
+    }
+  };
+
+  // 1) Etiquetas de sinónimos: coincidencia exacta, o claves presentes como
+  //    palabra dentro de la frase (ej: "belleza" en "tienda de productos de belleza")
+  if (SINONIMOS[clave]) {
+    agregarTags(SINONIMOS[clave]);
+  } else {
+    for (const [key, tags] of Object.entries(SINONIMOS)) {
+      if (GENERIC_KEYS.has(key)) continue;
+      if (limiteRegex(normalizar(key)).test(clave)) agregarTags(tags);
     }
   }
 
-  // 2) Además, busca negocios cuyo NOMBRE contenga el texto (cualquier rubro)
-  const kw = escaparRegex(texto.trim());
-  if (kw.length >= 3) {
+  // 2) Tokens significativos (sin palabras de relleno) para búsqueda por nombre
+  const tokens = clave.split(/\s+/).filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+  const terminos = tokens.length ? tokens : [clave];
+  for (const tk of terminos) {
+    const kw = escaparRegex(tk);
+    if (kw.length < 3) continue;
     for (const k of ['shop', 'amenity', 'office', 'craft', 'leisure', 'tourism', 'healthcare']) {
       bloques.push(`node["${k}"]["name"~"${kw}",i]${area};`, `way["${k}"]["name"~"${kw}",i]${area};`);
     }
@@ -247,13 +280,14 @@ async function buscarLibreEnOSM({ texto, bbox, limite }) {
   const consulta = `[out:json][timeout:25];\n(\n${bloques.join('\n')}\n);\nout center tags ${limite * 6};`;
   const data = await ejecutarOverpass(consulta);
 
-  // Filtra falsos positivos: acepta el negocio si tiene una etiqueta de sinónimo
-  // O si su nombre contiene la palabra completa (no como subcadena de otra palabra).
-  const palabra = new RegExp(`(^|[^a-záéíóúñ])${clave.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-záéíóúñ]|$)`, 'i');
+  // Filtra falsos positivos: acepta si tiene una etiqueta de sinónimo O si su
+  // nombre contiene algún token como palabra completa (no como subcadena).
+  const regexTokens = terminos.map(limiteRegex);
   const filtrados = (data.elements || []).filter((el) => {
     const t = el.tags || {};
     const porTag = setTags.size && Object.entries(t).some(([k, v]) => setTags.has(`${k}=${v}`));
-    const porNombre = t.name && palabra.test(normalizar(t.name));
+    const nom = t.name ? normalizar(t.name) : '';
+    const porNombre = nom && regexTokens.some((re) => re.test(nom));
     return porTag || porNombre;
   });
 
