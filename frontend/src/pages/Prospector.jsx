@@ -308,6 +308,30 @@ export default function Prospector() {
 
         {analisis && (
           <div style={{ marginTop: '1.25rem' }}>
+            {/* Núcleo de audiencia por red */}
+            {analisis.nucleos?.length > 0 && (
+              <>
+                <h3 style={{ fontSize: '0.95rem', marginBottom: '0.5rem' }}>👥 Núcleo de clientes por red social</h3>
+                <div style={{ overflowX: 'auto', marginBottom: '1.25rem' }}>
+                  <table>
+                    <thead>
+                      <tr><th>Red</th><th>Núcleo (edad)</th><th>Perfil</th><th>Mejor para</th></tr>
+                    </thead>
+                    <tbody>
+                      {analisis.nucleos.map((n) => (
+                        <tr key={n.red}>
+                          <td style={{ fontWeight: 600 }}>{n.red}</td>
+                          <td style={{ color: 'var(--cian)', fontWeight: 700, whiteSpace: 'nowrap' }}>{n.nucleo}</td>
+                          <td style={{ fontSize: '0.8rem', color: 'var(--texto-suave)' }}>{n.perfil}</td>
+                          <td style={{ fontSize: '0.8rem' }}>{n.mejorPara}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
             {/* Enlaces de investigación en redes */}
             <h3 style={{ fontSize: '0.95rem', marginBottom: '0.5rem' }}>🔗 Investiga "{analisis.enlaces.objetivo.nombre}" y su competencia en redes</h3>
             <p style={{ fontSize: '0.75rem', color: 'var(--texto-suave)', marginTop: 0 }}>

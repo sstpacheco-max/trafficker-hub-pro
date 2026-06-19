@@ -379,6 +379,16 @@ async function buscar({ categoria, tipoLibre, ciudad, pais, limite = 25 }) {
   return { zona: zona.nombre, motor: 'openstreetmap', termino, negocios, estadisticas: estadisticas(negocios) };
 }
 
+// Núcleo demográfico típico por red social (datos de referencia de la industria).
+// La IA los adapta luego al rubro y ciudad concretos.
+const NUCLEOS_AUDIENCIA = [
+  { red: 'TikTok', nucleo: '16–24 años', perfil: 'Gen Z, video corto, tendencias y entretenimiento', mejorPara: 'Awareness viral, descubrimiento, productos visuales' },
+  { red: 'Instagram', nucleo: '18–34 años', perfil: 'Millennials y Gen Z, estética e inspiración, compra impulsiva', mejorPara: 'Catálogo visual, marca, colaboraciones con creadores' },
+  { red: 'Facebook', nucleo: '25–44 años', perfil: 'Adultos, decisiones familiares, grupos y marketplace local', mejorPara: 'Pauta segmentada, ofertas, leads y retargeting' },
+  { red: 'WhatsApp Business', nucleo: 'Todas las edades', perfil: 'Canal directo de atención y cierre', mejorPara: 'Cierre de venta, soporte, catálogo y recompra' },
+  { red: 'Google (Maps + Búsqueda)', nucleo: '25–55 años', perfil: 'Intención de compra activa, busca "cerca de mí"', mejorPara: 'Captar demanda local existente, reseñas y reputación' }
+];
+
 // Genera enlaces de investigación (legales, son búsquedas) para encontrar un
 // negocio y su presencia en cada red social. El usuario abre y verifica a mano.
 function enlacesRedes(nombre, ciudad = '') {
@@ -392,4 +402,4 @@ function enlacesRedes(nombre, ciudad = '') {
   };
 }
 
-module.exports = { buscar, CATEGORIAS, enlacesRedes };
+module.exports = { buscar, CATEGORIAS, enlacesRedes, NUCLEOS_AUDIENCIA };

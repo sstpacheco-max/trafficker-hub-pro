@@ -323,34 +323,39 @@ app.post('/api/prospector/analisis-competitivo', async (req, res) => {
     : 'No se aportaron competidores escaneados.';
 
   const servicio = miServicio || 'gestión de Meta/Google/TikTok Ads y presencia digital';
+  const nucleos = prospector.NUCLEOS_AUDIENCIA;
+  const refAudiencia = nucleos.map((n) => `${n.red}: núcleo ${n.nucleo} (${n.perfil})`).join('\n');
 
   try {
     const { texto, motor } = await iaMotor.generarTexto({
       system:
         'Eres un estratega de marketing digital experto en análisis competitivo de negocios locales. ' +
-        'Analizas una tienda frente a su competencia y propones estrategias accionables para que ' +
-        'destaque en redes sociales (Facebook, Instagram, TikTok). Respondes en español, conciso y ' +
-        'concreto, en estas secciones con estos títulos exactos:\n' +
+        'Analizas una tienda frente a su competencia y propones estrategias accionables para redes ' +
+        'sociales. Respondes en español, concreto y sin relleno, en estas secciones con estos títulos exactos:\n' +
         '🎯 DIAGNÓSTICO DE LA TIENDA (2-3 frases sobre su situación probable y su oportunidad)\n' +
-        '🔍 QUÉ MIRAR EN LA COMPETENCIA (3 métricas/señales concretas a comparar en sus perfiles)\n' +
-        '📊 BRECHAS Y OPORTUNIDADES (3 huecos que la tienda puede aprovechar)\n' +
-        '🚀 ESTRATEGIAS PARA SUPERARLOS (4 acciones concretas de contenido/pauta para redes)\n' +
-        'Máximo 280 palabras.',
+        '👥 NÚCLEO DE CLIENTES POR RED (para este rubro, di el rango de edad ideal y el ángulo de contenido en TikTok, Instagram y Facebook; sé específico, ej: "TikTok 16-24: ...")\n' +
+        '📈 SEGUIDORES Y VIDEOS VIRALES (qué revisar en los perfiles de la competencia: nº de seguidores, frecuencia, y qué TIPO de video/post suele volverse viral en este rubro y por qué; da 2-3 ideas de contenido viral replicables)\n' +
+        '🗺️ CÓMO REFORZAR LA PRESENCIA (acciones para aparecer y destacar; incluye SIEMPRE Google Business Profile/Maps si el negocio no aparece, reseñas, y consistencia de marca entre redes)\n' +
+        '🚀 ESTRATEGIAS PARA SUPERARLOS (4 acciones concretas de contenido y pauta)\n' +
+        'Máximo 380 palabras.',
       usuario:
         `Tienda a analizar: ${negocio}\n` +
         `Rubro: ${rubro || 'comercio local'} | Ciudad: ${ciudad || 'no especificada'}\n` +
         `Competencia escaneada en la zona:\n${resumenComp}\n\n` +
+        `Datos de referencia del núcleo de audiencia por red (adáptalos a este rubro):\n${refAudiencia}\n\n` +
         `Mi servicio (lo que ofrezco a esta tienda): ${servicio}\n\n` +
         'Genera el análisis competitivo y las estrategias para redes sociales.'
     });
-    res.json({ enlaces, analisis: texto, motor });
+    res.json({ enlaces, nucleos, analisis: texto, motor });
   } catch (error) {
     console.error('Error en análisis competitivo:', error.message);
     res.json({
       enlaces,
+      nucleos,
       analisis: 'No se pudo generar el análisis con IA (sin proveedor configurado o saturado). ' +
-        'Usa los enlaces de arriba para revisar manualmente cada tienda en Facebook, Instagram y TikTok: ' +
-        'compara nº de seguidores, frecuencia de publicación, interacción y calidad de fotos.',
+        'Usa la tabla de núcleo de audiencia y los enlaces de arriba para revisar manualmente cada tienda ' +
+        'en Facebook, Instagram y TikTok: compara nº de seguidores, frecuencia de publicación, el video más ' +
+        'visto y la calidad de las fotos.',
       motor: 'no-disponible'
     });
   }
