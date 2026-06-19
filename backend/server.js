@@ -297,6 +297,65 @@ app.post('/api/prospector/pitch', async (req, res) => {
   }
 });
 
+// Análisis competitivo en redes: compara una tienda con su competencia y
+// genera estrategias con IA. Devuelve enlaces de investigación (legales) para
+// cada negocio en Facebook/Instagram/TikTok/Google y un análisis estratégico.
+app.post('/api/prospector/analisis-competitivo', async (req, res) => {
+  const { negocio, competidores, rubro, ciudad, miServicio } = req.body || {};
+  if (!negocio || !negocio.trim()) {
+    return res.status(400).json({ error: 'Escribe el nombre de la tienda a analizar.' });
+  }
+
+  const lista = Array.isArray(competidores) ? competidores.filter((c) => c && c.nombre) : [];
+
+  // Enlaces de investigación para la tienda objetivo y sus competidores
+  const enlaces = {
+    objetivo: { nombre: negocio, ...prospector.enlacesRedes(negocio, ciudad) },
+    competidores: lista.map((c) => ({ nombre: c.nombre, ...prospector.enlacesRedes(c.nombre, ciudad) }))
+  };
+
+  // Resumen de la competencia para alimentar a la IA
+  const resumenComp = lista.length
+    ? lista.map((c) => {
+        const redes = (c.redes?.facebook || c.redes?.instagram) ? 'con redes' : 'sin redes visibles';
+        return `- ${c.nombre}: ${c.web ? 'tiene web' : 'sin web'}, ${redes}`;
+      }).join('\n')
+    : 'No se aportaron competidores escaneados.';
+
+  const servicio = miServicio || 'gestión de Meta/Google/TikTok Ads y presencia digital';
+
+  try {
+    const { texto, motor } = await iaMotor.generarTexto({
+      system:
+        'Eres un estratega de marketing digital experto en análisis competitivo de negocios locales. ' +
+        'Analizas una tienda frente a su competencia y propones estrategias accionables para que ' +
+        'destaque en redes sociales (Facebook, Instagram, TikTok). Respondes en español, conciso y ' +
+        'concreto, en estas secciones con estos títulos exactos:\n' +
+        '🎯 DIAGNÓSTICO DE LA TIENDA (2-3 frases sobre su situación probable y su oportunidad)\n' +
+        '🔍 QUÉ MIRAR EN LA COMPETENCIA (3 métricas/señales concretas a comparar en sus perfiles)\n' +
+        '📊 BRECHAS Y OPORTUNIDADES (3 huecos que la tienda puede aprovechar)\n' +
+        '🚀 ESTRATEGIAS PARA SUPERARLOS (4 acciones concretas de contenido/pauta para redes)\n' +
+        'Máximo 280 palabras.',
+      usuario:
+        `Tienda a analizar: ${negocio}\n` +
+        `Rubro: ${rubro || 'comercio local'} | Ciudad: ${ciudad || 'no especificada'}\n` +
+        `Competencia escaneada en la zona:\n${resumenComp}\n\n` +
+        `Mi servicio (lo que ofrezco a esta tienda): ${servicio}\n\n` +
+        'Genera el análisis competitivo y las estrategias para redes sociales.'
+    });
+    res.json({ enlaces, analisis: texto, motor });
+  } catch (error) {
+    console.error('Error en análisis competitivo:', error.message);
+    res.json({
+      enlaces,
+      analisis: 'No se pudo generar el análisis con IA (sin proveedor configurado o saturado). ' +
+        'Usa los enlaces de arriba para revisar manualmente cada tienda en Facebook, Instagram y TikTok: ' +
+        'compara nº de seguidores, frecuencia de publicación, interacción y calidad de fotos.',
+      motor: 'no-disponible'
+    });
+  }
+});
+
 // Mini-CRM de prospectos
 app.get('/api/prospectos', (req, res) => {
   res.json(db.listarProspectos());

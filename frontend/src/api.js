@@ -54,6 +54,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(datos)
     }).then(manejar),
+  analisisCompetitivo: (datos) =>
+    fetch('/api/prospector/analisis-competitivo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos)
+    }).then(manejar),
   prospectos: () => fetch('/api/prospectos').then(manejar),
   guardarProspecto: (p) =>
     fetch('/api/prospectos', {

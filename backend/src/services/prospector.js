@@ -379,4 +379,17 @@ async function buscar({ categoria, tipoLibre, ciudad, pais, limite = 25 }) {
   return { zona: zona.nombre, motor: 'openstreetmap', termino, negocios, estadisticas: estadisticas(negocios) };
 }
 
-module.exports = { buscar, CATEGORIAS };
+// Genera enlaces de investigación (legales, son búsquedas) para encontrar un
+// negocio y su presencia en cada red social. El usuario abre y verifica a mano.
+function enlacesRedes(nombre, ciudad = '') {
+  const q = (extra = '') => encodeURIComponent(`${nombre} ${ciudad} ${extra}`.trim());
+  return {
+    google: `https://www.google.com/search?q=${q('redes sociales')}`,
+    facebook: `https://www.facebook.com/search/top?q=${q()}`,
+    instagram: `https://www.google.com/search?q=${q('site:instagram.com')}`,
+    tiktok: `https://www.tiktok.com/search?q=${q()}`,
+    maps: `https://www.google.com/maps/search/${q()}`
+  };
+}
+
+module.exports = { buscar, CATEGORIAS, enlacesRedes };

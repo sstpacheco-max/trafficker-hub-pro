@@ -30,6 +30,12 @@ export default function Prospector() {
   const [crm, setCrm] = useState([]);
   const [aviso, setAviso] = useState('');
 
+  // Análisis competitivo en redes
+  const [tiendaObjetivo, setTiendaObjetivo] = useState('');
+  const [analisis, setAnalisis] = useState(null);
+  const [analizando, setAnalizando] = useState(false);
+  const [errorAnalisis, setErrorAnalisis] = useState('');
+
   const cargarCrm = () => api.prospectos().then(setCrm).catch(() => {});
 
   useEffect(() => {
@@ -99,6 +105,28 @@ export default function Prospector() {
   const cambiarEstado = async (p, estado) => {
     await api.actualizarProspecto(p.id, { estado });
     cargarCrm();
+  };
+
+  const analizarCompetencia = async (nombreParam) => {
+    const nombre = (nombreParam ?? tiendaObjetivo).trim();
+    if (!nombre) return;
+    if (nombreParam) setTiendaObjetivo(nombreParam);
+    setAnalizando(true);
+    setErrorAnalisis('');
+    setAnalisis(null);
+    try {
+      const data = await api.analisisCompetitivo({
+        negocio: nombre,
+        competidores: (resultado?.negocios || []).filter((n) => n.nombre !== nombre),
+        rubro: resultado?.termino || tipoLibre || categoria,
+        ciudad,
+        miServicio
+      });
+      setAnalisis(data);
+    } catch (e) {
+      setErrorAnalisis(e.message);
+    }
+    setAnalizando(false);
   };
 
   const st = resultado?.estadisticas;
@@ -217,8 +245,9 @@ export default function Prospector() {
                       <span style={{ color: 'var(--texto-suave)', fontSize: '0.75rem' }}> ({n.score})</span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                         <button className="boton suave" onClick={() => generarPitch(n)}>💬 Pitch IA</button>
+                        <button className="boton suave" onClick={() => { analizarCompetencia(n.nombre); document.getElementById('analisis-competitivo')?.scrollIntoView({ behavior: 'smooth' }); }}>📊 vs competencia</button>
                         <button className="boton suave" onClick={() => guardar(n, pitchAbierto === n.nombre ? pitchTexto : null)}>💾</button>
                       </div>
                     </td>
@@ -251,6 +280,69 @@ export default function Prospector() {
           </table>
         </div>
       )}
+
+      {/* Análisis competitivo en redes */}
+      <div className="tarjeta" id="analisis-competitivo" style={{ borderLeft: '3px solid var(--primario)' }}>
+        <h2>🔬 Análisis competitivo en redes</h2>
+        <p style={{ fontSize: '0.83rem', color: 'var(--texto-suave)', marginTop: 0 }}>
+          Escribe el nombre de una tienda y compárala con su competencia para diseñar estrategias.
+          {resultado?.negocios?.length ? ` Se compara contra los ${resultado.negocios.length} negocios escaneados arriba.` : ' Primero escanea una zona para tener competidores.'}
+        </p>
+
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <label>Nombre de la tienda a analizar</label>
+            <input
+              value={tiendaObjetivo}
+              onChange={(e) => setTiendaObjetivo(e.target.value)}
+              placeholder="Ej: Multibelleza, Cosmeticos LM, Pink Belleza..."
+              style={{ marginBottom: 0 }}
+            />
+          </div>
+          <button className="boton" disabled={analizando || !tiendaObjetivo.trim()} onClick={() => analizarCompetencia()}>
+            {analizando ? '🧠 Analizando...' : '🔬 Analizar y crear estrategias'}
+          </button>
+        </div>
+
+        {errorAnalisis && <div className="alerta roja" style={{ marginTop: '0.85rem' }}>{errorAnalisis}</div>}
+
+        {analisis && (
+          <div style={{ marginTop: '1.25rem' }}>
+            {/* Enlaces de investigación en redes */}
+            <h3 style={{ fontSize: '0.95rem', marginBottom: '0.5rem' }}>🔗 Investiga "{analisis.enlaces.objetivo.nombre}" y su competencia en redes</h3>
+            <p style={{ fontSize: '0.75rem', color: 'var(--texto-suave)', marginTop: 0 }}>
+              Clic para abrir cada red en una pestaña nueva (los datos de seguidores los verifica cada plataforma; aquí te llevamos directo al perfil).
+            </p>
+            <div style={{ overflowX: 'auto' }}>
+              <table>
+                <thead>
+                  <tr><th>Negocio</th><th>Google</th><th>Facebook</th><th>Instagram</th><th>TikTok</th></tr>
+                </thead>
+                <tbody>
+                  {[analisis.enlaces.objetivo, ...analisis.enlaces.competidores].map((e, i) => (
+                    <tr key={e.nombre + i}>
+                      <td style={{ fontWeight: i === 0 ? 700 : 400 }}>
+                        {i === 0 ? '⭐ ' : ''}{e.nombre}
+                      </td>
+                      <td><a href={e.google} target="_blank" rel="noreferrer" style={{ color: 'var(--cian)' }}>🔎</a></td>
+                      <td><a href={e.facebook} target="_blank" rel="noreferrer" style={{ color: 'var(--cian)' }}>📘</a></td>
+                      <td><a href={e.instagram} target="_blank" rel="noreferrer" style={{ color: 'var(--cian)' }}>📸</a></td>
+                      <td><a href={e.tiktok} target="_blank" rel="noreferrer" style={{ color: 'var(--cian)' }}>🎵</a></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Análisis estratégico con IA */}
+            <h3 style={{ fontSize: '0.95rem', margin: '1.25rem 0 0.5rem' }}>🤖 Estrategias generadas</h3>
+            <div className="copy-box" style={{ borderLeftColor: 'var(--primario)' }}>{analisis.analisis}</div>
+            <p style={{ fontSize: '0.72rem', color: 'var(--texto-suave)', marginBottom: 0 }}>
+              Motor: {analisis.motor === 'no-disponible' ? '📋 IA no disponible (configura una key gratuita en backend/.env)' : `🤖 IA (${analisis.motor})`}
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Mini-CRM */}
       <div className="tarjeta">
