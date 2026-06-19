@@ -1,0 +1,167 @@
+/* Trafficker Hub Pro — tema oscuro "centro de mando" */
+:root {
+  --bg: #0b1220;
+  --panel: #111a2c;
+  --panel-2: #16213a;
+  --borde: #233047;
+  --texto: #e2e8f0;
+  --texto-suave: #8fa3bf;
+  --primario: #6366f1;
+  --primario-hover: #818cf8;
+  --cian: #22d3ee;
+  --verde: #34d399;
+  --rojo: #f87171;
+  --ambar: #fbbf24;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--texto);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.app { display: flex; min-height: 100vh; }
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  width: 230px;
+  background: var(--panel);
+  border-right: 1px solid var(--borde);
+  padding: 1.25rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+.logo {
+  font-size: 1.05rem;
+  font-weight: 800;
+  padding: 0 0.75rem 1rem;
+  background: linear-gradient(90deg, var(--cian), var(--primario-hover));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 0.3px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--texto-suave);
+  font-size: 0.92rem;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.15s, color 0.15s;
+}
+.nav-item:hover { background: var(--panel-2); color: var(--texto); }
+.nav-item.activo {
+  background: linear-gradient(90deg, rgba(99,102,241,0.25), rgba(34,211,238,0.08));
+  color: #fff;
+  font-weight: 600;
+}
+.sidebar-footer { margin-top: auto; padding: 0.75rem; font-size: 0.72rem; color: var(--texto-suave); }
+
+/* ---------- Contenido ---------- */
+.contenido { flex: 1; padding: 1.5rem 2rem; min-width: 0; }
+.encabezado { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem; }
+.encabezado h1 { margin: 0; font-size: 1.4rem; }
+.encabezado .sub { color: var(--texto-suave); font-size: 0.85rem; margin-top: 0.2rem; }
+
+/* Punto "EN VIVO" */
+.en-vivo { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--verde); font-weight: 600; }
+.punto { width: 8px; height: 8px; border-radius: 50%; background: var(--verde); animation: pulso 1.6s infinite; }
+@keyframes pulso { 0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52,211,153,0.5); } 50% { opacity: 0.6; box-shadow: 0 0 0 6px rgba(52,211,153,0); } }
+
+/* ---------- Tarjetas y KPIs ---------- */
+.tarjeta {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+.tarjeta h2 { margin: 0 0 1rem; font-size: 1.02rem; }
+
+.fila-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+.kpi {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  position: relative;
+  overflow: hidden;
+}
+.kpi::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--primario), var(--cian));
+}
+.kpi .etiqueta { color: var(--texto-suave); font-size: 0.78rem; margin: 0 0 0.3rem; text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi .valor { font-size: 1.55rem; font-weight: 800; margin: 0; transition: color 0.4s; }
+.kpi .delta { font-size: 0.75rem; margin-top: 0.25rem; }
+.delta.sube { color: var(--verde); }
+.delta.baja { color: var(--rojo); }
+
+/* ---------- Tablas ---------- */
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+th { text-align: left; color: var(--texto-suave); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--borde); }
+td { padding: 0.65rem 0.75rem; border-bottom: 1px solid rgba(35,48,71,0.6); }
+tr:hover td { background: rgba(99,102,241,0.05); }
+
+/* ---------- Insignias y botones ---------- */
+.insignia { display: inline-block; padding: 0.18rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+.insignia.activa { background: rgba(52,211,153,0.15); color: var(--verde); }
+.insignia.pausada { background: rgba(148,163,184,0.15); color: #94a3b8; }
+.insignia.meta { background: rgba(59,130,246,0.18); color: #60a5fa; }
+.insignia.google { background: rgba(251,191,36,0.15); color: var(--ambar); }
+.insignia.tiktok { background: rgba(244,114,182,0.15); color: #f472b6; }
+.insignia.demo { background: rgba(251,191,36,0.15); color: var(--ambar); }
+.insignia.conectado { background: rgba(52,211,153,0.15); color: var(--verde); }
+
+.boton {
+  background: var(--primario);
+  color: #fff; border: none; border-radius: 8px;
+  padding: 0.55rem 1rem; font-weight: 700; font-size: 0.88rem;
+  cursor: pointer; transition: background 0.15s, transform 0.1s;
+}
+.boton:hover { background: var(--primario-hover); }
+.boton:active { transform: scale(0.97); }
+.boton:disabled { opacity: 0.5; cursor: wait; }
+.boton.suave { background: var(--panel-2); border: 1px solid var(--borde); color: var(--texto); font-weight: 600; padding: 0.35rem 0.7rem; font-size: 0.78rem; }
+.boton.suave:hover { border-color: var(--primario); color: #fff; }
+.boton.peligro:hover { border-color: var(--rojo); color: var(--rojo); }
+
+/* ---------- Formularios ---------- */
+label { display: block; font-size: 0.8rem; color: var(--texto-suave); margin-bottom: 0.3rem; }
+input, select, textarea {
+  width: 100%; padding: 0.55rem 0.7rem; border-radius: 8px;
+  border: 1px solid var(--borde); background: var(--panel-2);
+  color: var(--texto); font-size: 0.9rem; margin-bottom: 0.85rem;
+}
+input:focus, textarea:focus { outline: none; border-color: var(--primario); }
+
+/* ---------- Alertas ---------- */
+.alerta { padding: 0.6rem 0.85rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 0.5rem; border-left: 3px solid; }
+.alerta.amarilla { background: rgba(251,191,36,0.08); border-color: var(--ambar); }
+.alerta.verde { background: rgba(52,211,153,0.08); border-color: var(--verde); }
+.alerta.roja { background: rgba(248,113,113,0.08); border-color: var(--rojo); }
+
+/* ---------- Copy generado ---------- */
+.copy-box {
+  background: var(--panel-2); border: 1px solid var(--borde);
+  border-left: 3px solid var(--cian); border-radius: 8px;
+  padding: 1rem; white-space: pre-wrap; font-size: 0.9rem; line-height: 1.55;
+  animation: aparecer 0.4s ease;
+}
+@keyframes aparecer { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }

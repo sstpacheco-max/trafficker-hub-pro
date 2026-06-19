@@ -1,0 +1,21 @@
+{
+  "name": "trafficker-hub-backend",
+  "version": "1.0.0",
+  "description": "Trafficker Hub Pro - Backend MCP Server (Omnicanal + IA + Analítica)",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0"
+  },
+  "optionalDependencies": {
+    "facebook-nodejs-business-sdk": "^20.0.0",
+    "google-ads-api": "^17.1.0",
+    "openai": "^4.77.0"
+  }
+}
