@@ -76,11 +76,28 @@ export const api = {
   eliminarProspecto: (id) => fetch(`/api/prospectos/${id}`, { method: 'DELETE' }),
 
   clientes: () => fetch('/api/clientes').then(manejar),
+  obtenerCliente: (id) => fetch(`/api/clientes/${id}`).then(manejar),
   crearCliente: (datos) =>
     fetch('/api/clientes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(datos)
     }).then(manejar),
-  eliminarCliente: (id) => fetch(`/api/clientes/${id}`, { method: 'DELETE' })
+  actualizarCliente: (id, campos) =>
+    fetch(`/api/clientes/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(campos)
+    }).then(manejar),
+  eliminarCliente: (id) => fetch(`/api/clientes/${id}`, { method: 'DELETE' }),
+
+  interacciones: (clienteId) => fetch(`/api/clientes/${clienteId}/interacciones`).then(manejar),
+  agregarInteraccion: (clienteId, datos) =>
+    fetch(`/api/clientes/${clienteId}/interacciones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos)
+    }).then(manejar),
+  promoverProspecto: (id) =>
+    fetch(`/api/prospectos/${id}/promover`, { method: 'POST' }).then(manejar)
 };

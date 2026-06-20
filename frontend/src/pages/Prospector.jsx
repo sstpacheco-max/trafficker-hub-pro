@@ -485,7 +485,18 @@ export default function Prospector() {
                     </select>
                   </td>
                   <td>
-                    <button className="boton suave peligro" onClick={async () => { await api.eliminarProspecto(p.id); cargarCrm(); }}>🗑️</button>
+                    <div style={{ display: 'flex', gap: '0.3rem' }}>
+                      {p.estado !== 'cliente' && (
+                        <button className="boton suave" title="Promover a cliente" onClick={async () => {
+                          try {
+                            await api.promoverProspecto(p.id);
+                            mostrarAviso(`🎉 "${p.nombre}" promovido a cliente`);
+                            cargarCrm();
+                          } catch (e) { mostrarAviso(`Error: ${e.message}`); }
+                        }}>🏆</button>
+                      )}
+                      <button className="boton suave peligro" onClick={async () => { await api.eliminarProspecto(p.id); cargarCrm(); }}>🗑️</button>
+                    </div>
                   </td>
                 </tr>
               ))}

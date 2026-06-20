@@ -460,17 +460,49 @@ app.get('/api/clientes', (req, res) => {
   res.json(db.listarClientes());
 });
 
+app.get('/api/clientes/:id', (req, res) => {
+  const c = db.obtenerCliente(Number(req.params.id));
+  if (!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+  res.json(c);
+});
+
 app.post('/api/clientes', (req, res) => {
-  const { nombre, industria, presupuesto_mensual } = req.body || {};
-  if (!nombre) {
+  const datos = req.body || {};
+  if (!datos.nombre) {
     return res.status(400).json({ error: 'El campo "nombre" es obligatorio.' });
   }
-  res.status(201).json(db.crearCliente({ nombre, industria, presupuesto_mensual }));
+  res.status(201).json(db.crearCliente(datos));
+});
+
+app.patch('/api/clientes/:id', (req, res) => {
+  const c = db.actualizarCliente(Number(req.params.id), req.body || {});
+  if (!c) return res.status(404).json({ error: 'Cliente no encontrado' });
+  res.json(c);
 });
 
 app.delete('/api/clientes/:id', (req, res) => {
   db.eliminarCliente(Number(req.params.id));
   res.status(204).end();
+});
+
+app.get('/api/clientes/:id/interacciones', (req, res) => {
+  res.json(db.listarInteracciones(Number(req.params.id)));
+});
+
+app.post('/api/clientes/:id/interacciones', (req, res) => {
+  const { tipo, descripcion } = req.body || {};
+  if (!tipo || !descripcion) return res.status(400).json({ error: 'tipo y descripcion son obligatorios' });
+  db.agregarInteraccion(Number(req.params.id), tipo, descripcion);
+  res.status(201).json({ ok: true });
+});
+
+app.post('/api/prospectos/:id/promover', (req, res) => {
+  try {
+    const cliente = db.promoverProspecto(Number(req.params.id));
+    res.status(201).json(cliente);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 app.get('/api/historico', (req, res) => {

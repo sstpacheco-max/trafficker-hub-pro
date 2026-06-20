@@ -21,6 +21,15 @@ db.exec(`
     creado_en TEXT DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS interacciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER NOT NULL,
+    tipo TEXT NOT NULL,
+    descripcion TEXT NOT NULL,
+    fecha TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
+  );
+
   CREATE TABLE IF NOT EXISTS metricas_historicas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     fecha TEXT DEFAULT (datetime('now')),
@@ -144,6 +153,26 @@ function sembrarHistorico() {
   }
 }
 
+// Migrar tabla clientes: agregar columnas nuevas si no existen
+const columnasClientes = db.prepare("PRAGMA table_info(clientes)").all().map(c => c.name);
+const nuevasCols = [
+  ['contacto', 'TEXT'],
+  ['telefono', 'TEXT'],
+  ['email', 'TEXT'],
+  ['web', 'TEXT'],
+  ['redes_sociales', 'TEXT'],
+  ['direccion', 'TEXT'],
+  ['plataformas', 'TEXT'],
+  ['estado', "TEXT DEFAULT 'activo'"],
+  ['notas', 'TEXT'],
+  ['fecha_inicio', 'TEXT']
+];
+for (const [col, tipo] of nuevasCols) {
+  if (!columnasClientes.includes(col)) {
+    db.exec(`ALTER TABLE clientes ADD COLUMN ${col} ${tipo}`);
+  }
+}
+
 sembrarCampanias();
 sembrarHistorico();
 
@@ -198,19 +227,89 @@ function simularTick() {
 
 // ---------- Clientes ----------
 function listarClientes() {
-  return db.prepare('SELECT * FROM clientes ORDER BY creado_en DESC').all();
+  return db.prepare('SELECT * FROM clientes ORDER BY creado_en DESC').all().map(c => ({
+    ...c,
+    redes_sociales: c.redes_sociales ? JSON.parse(c.redes_sociales) : {},
+    plataformas: c.plataformas ? JSON.parse(c.plataformas) : []
+  }));
 }
 
-function crearCliente({ nombre, industria, presupuesto_mensual }) {
+function obtenerCliente(id) {
+  const c = db.prepare('SELECT * FROM clientes WHERE id = ?').get(id);
+  if (!c) return null;
+  return {
+    ...c,
+    redes_sociales: c.redes_sociales ? JSON.parse(c.redes_sociales) : {},
+    plataformas: c.plataformas ? JSON.parse(c.plataformas) : []
+  };
+}
+
+function crearCliente(datos) {
   const stmt = db.prepare(
-    'INSERT INTO clientes (nombre, industria, presupuesto_mensual) VALUES (?, ?, ?)'
+    `INSERT INTO clientes (nombre, industria, presupuesto_mensual, contacto, telefono, email, web, redes_sociales, direccion, plataformas, estado, notas, fecha_inicio)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
-  const result = stmt.run(nombre, industria || null, presupuesto_mensual || 0);
-  return db.prepare('SELECT * FROM clientes WHERE id = ?').get(result.lastInsertRowid);
+  const result = stmt.run(
+    datos.nombre, datos.industria || null, datos.presupuesto_mensual || 0,
+    datos.contacto || null, datos.telefono || null, datos.email || null,
+    datos.web || null, JSON.stringify(datos.redes_sociales || {}),
+    datos.direccion || null, JSON.stringify(datos.plataformas || []),
+    datos.estado || 'activo', datos.notas || null, datos.fecha_inicio || null
+  );
+  agregarInteraccion(result.lastInsertRowid, 'registro', 'Cliente registrado en el sistema');
+  return obtenerCliente(result.lastInsertRowid);
+}
+
+function actualizarCliente(id, campos) {
+  const permitidos = ['nombre','industria','presupuesto_mensual','contacto','telefono','email','web','redes_sociales','direccion','plataformas','estado','notas','fecha_inicio'];
+  const sets = [];
+  const valores = [];
+  for (const k of permitidos) {
+    if (campos[k] !== undefined) {
+      const val = (k === 'redes_sociales' || k === 'plataformas') ? JSON.stringify(campos[k]) : campos[k];
+      sets.push(`${k} = ?`);
+      valores.push(val);
+    }
+  }
+  if (!sets.length) return obtenerCliente(id);
+  db.prepare(`UPDATE clientes SET ${sets.join(', ')} WHERE id = ?`).run(...valores, id);
+  return obtenerCliente(id);
 }
 
 function eliminarCliente(id) {
+  db.prepare('DELETE FROM interacciones WHERE cliente_id = ?').run(id);
   db.prepare('DELETE FROM clientes WHERE id = ?').run(id);
+}
+
+function promoverProspecto(prospectoId) {
+  const p = db.prepare('SELECT * FROM prospectos WHERE id = ?').get(prospectoId);
+  if (!p) throw new Error('Prospecto no encontrado');
+  const redes = p.redes ? JSON.parse(p.redes) : {};
+  const cliente = crearCliente({
+    nombre: p.nombre,
+    industria: p.categoria,
+    contacto: null,
+    telefono: p.telefono,
+    email: p.email,
+    web: p.web,
+    redes_sociales: redes,
+    direccion: p.direccion || p.ciudad,
+    plataformas: [],
+    estado: 'activo',
+    notas: p.pitch ? `Pitch original: ${p.pitch}` : null,
+    presupuesto_mensual: 0
+  });
+  db.prepare("UPDATE prospectos SET estado = 'cliente' WHERE id = ?").run(prospectoId);
+  return cliente;
+}
+
+// ---------- Interacciones ----------
+function agregarInteraccion(clienteId, tipo, descripcion) {
+  db.prepare('INSERT INTO interacciones (cliente_id, tipo, descripcion) VALUES (?, ?, ?)').run(clienteId, tipo, descripcion);
+}
+
+function listarInteracciones(clienteId, limite = 50) {
+  return db.prepare('SELECT * FROM interacciones WHERE cliente_id = ? ORDER BY fecha DESC LIMIT ?').all(clienteId, limite);
 }
 
 // ---------- Métricas ----------
@@ -374,8 +473,13 @@ module.exports = {
   actualizarCampania,
   simularTick,
   listarClientes,
+  obtenerCliente,
   crearCliente,
+  actualizarCliente,
   eliminarCliente,
+  promoverProspecto,
+  agregarInteraccion,
+  listarInteracciones,
   guardarMetrica,
   obtenerHistorico,
   proyectarIngresos,
