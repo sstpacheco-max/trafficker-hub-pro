@@ -1,12 +1,30 @@
 // pages/Prospector.jsx — Escaneo de negocios por zona (mapa) + radiografía
 // digital + pitch de venta con IA + mini-CRM de prospectos.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { api } from '../api';
 
 const ESTADOS_CRM = ['nuevo', 'contactado', 'negociacion', 'cliente', 'descartado'];
 
 const colorNivel = (nivel) =>
   nivel === 'alta' ? 'var(--verde)' : nivel === 'media' ? 'var(--ambar)' : 'var(--texto-suave)';
+
+const COLOR_MARCADOR = { alta: '#e74c3c', media: '#f39c12', baja: '#95a5a6' };
+
+function crearIcono(nivel) {
+  const color = COLOR_MARCADOR[nivel] || COLOR_MARCADOR.baja;
+  return L.divIcon({
+    className: '',
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+    popupAnchor: [0, -28],
+    html: `<svg width="28" height="28" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14 2C8.5 2 4 6.5 4 12c0 7.4 10 14 10 14s10-6.6 10-14c0-5.5-4.5-10-10-10z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+      <circle cx="14" cy="11" r="4" fill="#fff"/>
+    </svg>`
+  });
+}
 
 export default function Prospector() {
   const [categorias, setCategorias] = useState([]);
@@ -36,6 +54,9 @@ export default function Prospector() {
   const [analizando, setAnalizando] = useState(false);
   const [errorAnalisis, setErrorAnalisis] = useState('');
 
+  const mapaRef = useRef(null);
+  const mapaInstancia = useRef(null);
+
   const cargarCrm = () => api.prospectos().then(setCrm).catch(() => {});
 
   useEffect(() => {
@@ -46,6 +67,52 @@ export default function Prospector() {
     api.estado().then((e) => setMotorProspector(e.prospectorMotor || 'openstreetmap')).catch(() => {});
     cargarCrm();
   }, []);
+
+  useEffect(() => {
+    if (!resultado?.negocios?.length || !mapaRef.current) return;
+    const conCoords = resultado.negocios.filter((n) => n.lat && n.lon);
+    if (!conCoords.length) return;
+
+    if (mapaInstancia.current) {
+      mapaInstancia.current.remove();
+      mapaInstancia.current = null;
+    }
+
+    const mapa = L.map(mapaRef.current, { scrollWheelZoom: true, zoomControl: true });
+    mapaInstancia.current = mapa;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(mapa);
+
+    const grupo = L.featureGroup();
+    for (const n of conCoords) {
+      const marcador = L.marker([n.lat, n.lon], { icon: crearIcono(n.nivel) });
+      const presencia = [
+        n.web ? '🌐 Web ✓' : '❌ Sin web',
+        (n.redes?.facebook || n.redes?.instagram) ? '📱 Redes ✓' : '❌ Sin redes'
+      ].join(' · ');
+      marcador.bindPopup(`
+        <div style="min-width:180px;font-family:system-ui;font-size:13px">
+          <strong style="font-size:14px">${n.nombre}</strong><br/>
+          <span style="color:#888">${n.direccion || n.categoria}</span><br/>
+          <span>${presencia}</span><br/>
+          ${n.telefono ? `📞 ${n.telefono}<br/>` : ''}
+          <span style="font-weight:700;color:${COLOR_MARCADOR[n.nivel]}">Oportunidad: ${n.nivel.toUpperCase()} (${n.score})</span>
+        </div>
+      `);
+      marcador.addTo(grupo);
+    }
+    grupo.addTo(mapa);
+    mapa.fitBounds(grupo.getBounds().pad(0.1));
+
+    return () => {
+      if (mapaInstancia.current) {
+        mapaInstancia.current.remove();
+        mapaInstancia.current = null;
+      }
+    };
+  }, [resultado]);
 
   const mostrarAviso = (t) => { setAviso(t); setTimeout(() => setAviso(''), 3000); };
 
@@ -203,6 +270,24 @@ export default function Prospector() {
           <p style={{ fontSize: '0.85rem', color: 'var(--texto-suave)', margin: 0 }}>💡 {st.lectura}</p>
           <p style={{ fontSize: '0.72rem', color: 'var(--texto-suave)', marginBottom: 0 }}>
             Fuente: {resultado.motor === 'openstreetmap' ? 'OpenStreetMap (Nominatim + Overpass, gratis)' : 'Google Places API'} · Zona: {resultado.zona}
+          </p>
+        </div>
+      )}
+
+      {/* Mapa interactivo */}
+      {resultado?.negocios?.length > 0 && (
+        <div className="tarjeta" style={{ padding: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <h2 style={{ margin: 0 }}>🗺️ Mapa de negocios escaneados</h2>
+            <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem' }}>
+              <span><span style={{ color: '#e74c3c' }}>●</span> Oportunidad alta</span>
+              <span><span style={{ color: '#f39c12' }}>●</span> Media</span>
+              <span><span style={{ color: '#95a5a6' }}>●</span> Baja</span>
+            </div>
+          </div>
+          <div ref={mapaRef} style={{ height: 400, borderRadius: 8, overflow: 'hidden' }} />
+          <p style={{ fontSize: '0.72rem', color: 'var(--texto-suave)', margin: '0.4rem 0 0' }}>
+            📍 {resultado.negocios.filter((n) => n.lat && n.lon).length} de {resultado.negocios.length} negocios con coordenadas · Clic en un marcador para ver detalles
           </p>
         </div>
       )}
