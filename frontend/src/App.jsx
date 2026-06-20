@@ -34,7 +34,7 @@ const MODULOS = [
   { id: 'estratega', icono: '🧭', nombre: 'Estratega' },
   { id: 'prospector', icono: '🔍', nombre: 'Prospector' },
   { id: 'campanias', icono: '🎯', nombre: 'Campañas' },
-  { id: 'copywriter', icono: '🧠', nombre: 'Copywriter IA' },
+  { id: 'copywriter', icono: '🎬', nombre: 'Creador Comerciales' },
   { id: 'clientes', icono: '👥', nombre: 'Clientes' }
 ];
 

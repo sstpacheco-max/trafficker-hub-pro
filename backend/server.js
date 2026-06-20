@@ -140,18 +140,44 @@ app.get('/api/metricas-globales', async (req, res) => {
 // ==========================================
 app.post('/api/mcp/generar-copy', async (req, res) => {
   const { producto, avatar, dolor } = req.body || {};
-
-  if (!producto) {
-    return res.status(400).json({ error: 'El campo "producto" es obligatorio.' });
-  }
-
+  if (!producto) return res.status(400).json({ error: 'El campo "producto" es obligatorio.' });
   try {
     const { copy, motor } = await copywriter.generarCopy({ producto, avatar, dolor });
     db.guardarCopy({ producto, avatar, dolor, metodo: 'AIDA', copy, motor });
     res.json({ metodo: 'AIDA', motor, copy });
   } catch (error) {
-    console.error('Error generando copy:', error);
     res.status(500).json({ error: 'No se pudo generar el copy.' });
+  }
+});
+
+app.get('/api/mcp/frameworks', (req, res) => {
+  res.json(copywriter.FRAMEWORKS);
+});
+
+app.get('/api/mcp/hooks', (req, res) => {
+  res.json(copywriter.HOOKS_VIRALES);
+});
+
+app.post('/api/mcp/generar-guion', async (req, res) => {
+  const { producto, avatar, dolor, framework, plataforma, tono } = req.body || {};
+  if (!producto) return res.status(400).json({ error: 'El campo "producto" es obligatorio.' });
+  try {
+    const result = await copywriter.generarGuion({ producto, avatar, dolor, framework, plataforma, tono });
+    db.guardarCopy({ producto, avatar, dolor, metodo: framework || 'ugc-problema', copy: result.guion, motor: result.motor });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'No se pudo generar el guion.' });
+  }
+});
+
+app.post('/api/mcp/generar-prompt-ia', async (req, res) => {
+  const { producto, avatar, dolor, plataforma, estiloVisual } = req.body || {};
+  if (!producto) return res.status(400).json({ error: 'El campo "producto" es obligatorio.' });
+  try {
+    const result = await copywriter.generarPromptIA({ producto, avatar, dolor, plataforma, estiloVisual });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'No se pudo generar el prompt.' });
   }
 });
 

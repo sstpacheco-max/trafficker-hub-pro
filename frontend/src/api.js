@@ -26,6 +26,20 @@ export const api = {
       body: JSON.stringify(datos)
     }).then(manejar),
   copies: () => fetch('/api/mcp/copies?limite=10').then(manejar),
+  frameworks: () => fetch('/api/mcp/frameworks').then(manejar),
+  hooks: () => fetch('/api/mcp/hooks').then(manejar),
+  generarGuion: (datos) =>
+    fetch('/api/mcp/generar-guion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos)
+    }).then(manejar),
+  generarPromptIA: (datos) =>
+    fetch('/api/mcp/generar-prompt-ia', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos)
+    }).then(manejar),
 
   analizarJurisdiccion: (datos) =>
     fetch('/api/inteligencia/jurisdiccion', {
