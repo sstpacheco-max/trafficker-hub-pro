@@ -361,6 +361,64 @@ app.post('/api/prospector/analisis-competitivo', async (req, res) => {
   }
 });
 
+// Plan de posicionamiento en Google (SEO local) para un negocio.
+// Devuelve un checklist base accionable (siempre, sin IA) + un plan
+// personalizado con IA listo para enviar al cliente como propuesta.
+app.post('/api/prospector/plan-seo', async (req, res) => {
+  const { negocio, rubro, ciudad, web } = req.body || {};
+  if (!negocio || !negocio.trim()) {
+    return res.status(400).json({ error: 'Escribe el nombre del negocio.' });
+  }
+
+  // Checklist base de SEO local (no depende de IA), ordenado por impacto
+  const checklist = [
+    { fase: 'Google Business Profile', impacto: 'alto', accion: 'Reclamar y verificar el Perfil de Empresa en google.com/business (si no aparece en Maps, casi siempre es por esto).' },
+    { fase: 'Google Business Profile', impacto: 'alto', accion: `Completar el perfil al 100%: categoría exacta ("${rubro || 'el rubro'}"), dirección, teléfono, horario y zona de cobertura.` },
+    { fase: 'Reseñas', impacto: 'alto', accion: 'Conseguir 20–30 reseñas en 60 días (QR en mostrador + link por WhatsApp tras la venta) y responderlas todas.' },
+    { fase: 'Contenido del perfil', impacto: 'medio', accion: 'Subir 2–3 fotos reales por semana y publicar ofertas/posts dentro del perfil (Google premia la actividad).' },
+    { fase: 'Consistencia NAP', impacto: 'medio', accion: 'Usar el mismo Nombre, Dirección y Teléfono idénticos en Google, Facebook, Instagram y directorios.' },
+    { fase: 'Sitio web', impacto: 'medio', accion: `Página rápida y optimizada para móvil con la frase "${rubro || 'tu rubro'} en ${ciudad || 'tu ciudad'}" en título y contenido.` },
+    { fase: 'Directorios locales', impacto: 'bajo', accion: 'Registrar el negocio en Páginas Amarillas y directorios locales con los mismos datos.' }
+  ];
+
+  const enlaces = {
+    crearPerfil: 'https://www.google.com/business/',
+    verComoApareceHoy: `https://www.google.com/maps/search/${encodeURIComponent(`${negocio} ${ciudad || ''}`.trim())}`,
+    buscarEnGoogle: `https://www.google.com/search?q=${encodeURIComponent(`${rubro || negocio} ${ciudad || ''}`.trim())}`
+  };
+
+  try {
+    const { texto, motor } = await iaMotor.generarTexto({
+      system:
+        'Eres un consultor de SEO local. Escribes un plan claro para que un negocio aparezca de PRIMERO ' +
+        'en Google y en el mapa (Map Pack) para búsquedas locales. En español, directo y accionable, ' +
+        'en estas secciones con estos títulos exactos:\n' +
+        '🎯 META (en una frase: para qué búsqueda queremos que salga #1)\n' +
+        '🗺️ EL MAPA ES EL PREMIO (por qué priorizar el Perfil de Empresa sobre la web en negocios locales)\n' +
+        '✅ PLAN DE 90 DÍAS (pasos por mes: mes 1, mes 2, mes 3, concretos y medibles)\n' +
+        '📣 CÓMO PEDIR RESEÑAS (1-2 tácticas concretas con guion corto para el cliente)\n' +
+        '💼 MI PROPUESTA (cómo yo, como experto, le ahorro este trabajo y qué entrego)\n' +
+        'Máximo 320 palabras. Tono de propuesta lista para enviar al dueño del negocio.',
+      usuario:
+        `Negocio: ${negocio}\n` +
+        `Rubro: ${rubro || 'comercio local'} | Ciudad: ${ciudad || 'no especificada'}\n` +
+        `¿Tiene web?: ${web ? 'sí (' + web + ')' : 'no detectada'}\n\n` +
+        'Genera el plan de posicionamiento en Google para este negocio.'
+    });
+    res.json({ checklist, enlaces, plan: texto, motor });
+  } catch (error) {
+    console.error('Error en plan SEO:', error.message);
+    res.json({
+      checklist,
+      enlaces,
+      plan: 'No se pudo generar el plan con IA (sin proveedor configurado o saturado). ' +
+        'Usa el checklist de arriba: el orden ya está por impacto. Lo más urgente es reclamar y verificar ' +
+        'el Google Business Profile y conseguir reseñas; eso solo ya suele meter al negocio en el mapa.',
+      motor: 'no-disponible'
+    });
+  }
+});
+
 // Mini-CRM de prospectos
 app.get('/api/prospectos', (req, res) => {
   res.json(db.listarProspectos());
