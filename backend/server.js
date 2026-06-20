@@ -13,9 +13,17 @@ const estratega = require('./src/services/estratega');
 const prospector = require('./src/services/prospector');
 const iaMotor = require('./src/services/ia');
 
+const path = require('path');
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// En producción, servir el build del frontend
+const FRONTEND_DIST = path.join(__dirname, '..', 'frontend', 'dist');
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(FRONTEND_DIST));
+}
 
 // ==========================================
 // MOTOR DE CAMPAÑAS (simulación en vivo)
@@ -485,6 +493,13 @@ app.get('/api/estado', (req, res) => {
     prospectorMotor: process.env.GOOGLE_MAPS_API_KEY ? 'google-places' : 'openstreetmap'
   });
 });
+
+// En producción, cualquier ruta no-API devuelve el index.html (SPA)
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
+  });
+}
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
